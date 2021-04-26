@@ -1,5 +1,5 @@
 orbs:
-  slack: circleci/slack@4.2.0
+  slack: circleci/slack@4.4.0
 version: 2.1
 executors:
   app-executor:
@@ -222,7 +222,7 @@ jobs:
       - run: echo "Slack notification"
       - slack/notify:
           event: 'always'
-          channel: 'cinema-app-circleci'
+          channel: 'cinema-circleci'
           template: ''
           custom: |
             {
