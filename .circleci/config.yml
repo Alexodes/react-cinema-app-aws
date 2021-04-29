@@ -1,10 +1,10 @@
 orbs:
-  slack: circleci/slack@4.4.0
+  slack: circleci/slack@4.2.0
 version: 2.1
 executors:
   app-executor:
     docker:
-      - image: circleci/node:16.0.0
+      - image: circleci/node:15.5.0
     working_directory: ~/repo
   slack-executor:
     docker:
@@ -57,7 +57,6 @@ aliases:
         cd build
         zip ../build.zip -r * .[^.]*
         echo "Build successful"
-
 jobs:
   build:
     executor: app-executor
@@ -118,7 +117,6 @@ jobs:
             terraform init -backend=false
             terraform validate
             terraform fmt -check
-
   terraform-plan-and-apply:
     executor: terraform-executor
     steps:
@@ -146,6 +144,26 @@ jobs:
           paths:
             - artifacts
 
+  publish-to-docker-hub:
+    executor: docker-publisher
+    steps:
+      - checkout
+      - setup_remote_docker
+      - *restore-cache
+      - run: docker login -u "${DOCKER_HUB_USER}" -p "${DOCKER_HUB_PASSWORD}"
+      - run: docker build --build-arg REACT_APP_API_SECRET=${REACT_APP_API_SECRET} --build-arg REACT_APP_SENTRY_DSN=${REACT_APP_SENTRY_DSN} -t ${IMAGE_NAME}:latest .
+      - run:
+          name: Tag and push to docker hub
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]
+            then
+              docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:stable-${CIRCLE_BUILD_NUM} && docker push ${IMAGE_NAME}:stable-${CIRCLE_BUILD_NUM}
+            elif [ "${CIRCLE_BRANCH}" == "staging" ]
+            then
+              docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:staging-${CIRCLE_BUILD_NUM} && docker push ${IMAGE_NAME}:staging-${CIRCLE_BUILD_NUM}
+            else
+              docker tag ${IMAGE_NAME}:latest ${IMAGE_NAME}:dev-${CIRCLE_BUILD_NUM} && docker push ${IMAGE_NAME}:dev-${CIRCLE_BUILD_NUM}
+            fi
   deploy-to-aws-s3:
     executor: app-executor
     steps:
@@ -169,7 +187,6 @@ jobs:
             else
               aws --region ${AWS_REGION} s3 sync ~/repo/build s3://${AWS_BUCKET_NAME} --delete
             fi
-
   deploy-to-aws-cloudfront:
     executor: app-executor
     steps:
@@ -194,14 +211,13 @@ jobs:
             else
               aws cloudfront create-invalidation --distribution-id ${CLOUDFRONT_DISTRIBUTION_ID} --paths /\*
             fi
-
   notify-via-slack:
     executor: slack-executor
     steps:
       - run: echo "Slack notification"
       - slack/notify:
           event: 'always'
-          channel: 'cinema-circleci'
+          channel: 'cinema-app-circleci'
           template: ''
           custom: |
             {
@@ -254,7 +270,6 @@ jobs:
                 }
               ]
             }
-
   terraform-destroy:
     executor: terraform-executor
     steps:
@@ -267,7 +282,6 @@ jobs:
             terraform init
             terraform workspace select ${CIRCLE_BRANCH} || terraform workspace new ${CIRCLE_BRANCH}
             terraform destroy --auto-approve
-
 workflows:
   build_and_deploy:
     jobs:
@@ -312,6 +326,15 @@ workflows:
       - terraform-plan-and-apply:
           requires:
             - terraform-validate
+          filters:
+            branches:
+              only:
+                - develop
+                - staging
+                - master
+      - publish-to-docker-hub:
+          requires:
+            - terraform-plan-and-apply
           filters:
             branches:
               only:
