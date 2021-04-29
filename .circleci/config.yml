@@ -323,24 +323,24 @@ workflows:
 #                - develop
 #                - staging
 #                - master
-      - terraform-plan-and-apply:
-          requires:
-            - terraform-validate
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
-      - publish-to-docker-hub:
-          requires:
-            - terraform-plan-and-apply
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
+#      - terraform-plan-and-apply:
+#          requires:
+#            - terraform-validate
+#          filters:
+#            branches:
+#              only:
+#                - develop
+#                - staging
+#                - master
+#      - publish-to-docker-hub:
+#          requires:
+#            - terraform-plan-and-apply
+#          filters:
+#            branches:
+#              only:
+#                - develop
+#                - staging
+#                - master
       - deploy-to-aws-s3:
           requires:
             - publish-to-docker-hub
