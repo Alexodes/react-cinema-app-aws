@@ -4,7 +4,7 @@ version: 2.1
 executors:
   app-executor:
     docker:
-      - image: circleci/node:15.5.0
+      - image: circleci/node:16.0.0
     working_directory: ~/repo
   slack-executor:
     docker:
@@ -105,18 +105,18 @@ jobs:
 #          name: Run unit unit
 #          command: npm run test
 
-  terraform-validate:
-    executor: terraform-executor
-    steps:
-      - checkout
-      - *show-current-branch-name
-      - run:
-          name: Terraform Validate & Format
-          command: |
-            cd infrastructure/
-            terraform init -backend=false
-            terraform validate
-            terraform fmt -check
+#  terraform-validate:
+#    executor: terraform-executor
+#    steps:
+#      - checkout
+#      - *show-current-branch-name
+#      - run:
+#          name: Terraform Validate & Format
+#          command: |
+#            cd infrastructure/
+#            terraform init -backend=false
+#            terraform validate
+#            terraform fmt -check
   terraform-plan-and-apply:
     executor: terraform-executor
     steps:
@@ -314,15 +314,15 @@ workflows:
 #                - develop
 #                - staging
 #                - master
-      - terraform-validate:
-          requires:
-            - unit-test
-          filters:
-            branches:
-              only:
-                - develop
-                - staging
-                - master
+#      - terraform-validate:
+#          requires:
+#            - unit-test
+#          filters:
+#            branches:
+#              only:
+#                - develop
+#                - staging
+#                - master
       - terraform-plan-and-apply:
           requires:
             - terraform-validate
